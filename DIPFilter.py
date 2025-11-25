@@ -8,6 +8,8 @@ import cv2
 
 class DIPFilters:
     def __init__(self, image_path):
+        
+        # Read image into Python
         self.image_path = image_path
         self.img = mpimg.imread(self.image_path)
         
@@ -15,12 +17,15 @@ class DIPFilters:
         self.img_filtered = (self.img*255).astype(np.uint8)
     
     def display(self):
+        
+        # Display the unfiltered image
         plt.figure()
-        plt.title("Unfiltered")
+        plt.title(f"Unfiltered")
         plt.imshow(self.img, cmap="gray")
-        self.img_filtered = (self.img*255).astype(np.uint8)
     
     def col2greyscale(self):
+        # Convert colour images to greyscale
+        # For testing larger images from the internet
         if self.img.ndim == 2:
             print("Image is already greyscale.")
         else:
@@ -28,6 +33,9 @@ class DIPFilters:
             self.img = np.dot(self.img[..., :3], rgb_weights)
     
     def crudeMeanFilter(self, window_size):
+        
+        # crude mean filter, not separable
+        # Designed for comparison with SeparableMeanFilter
         
         window_size = window_size
         size = int((window_size-1)/2)
@@ -56,41 +64,51 @@ class DIPFilters:
         
         #TODO: deal width the averaging of 0s in the edge
         
+        
         size = int((window_size-1)/2)
         window_area = window_size*window_size
-        padded_img = np.pad(self.img, pad_width=size, mode='constant')
+        
+        # Pad the image with the edge pixel
+        # Gives room for the window at position 1 
+        padded_img = np.pad(self.img, pad_width=size, mode='edge')
         
         img_height = self.img.shape[0]
         img_width = self.img.shape[1]
         
+        # Create an empty array to store the image
+        # After the passing of the horizontal mean filter
         intermediateArray = np.zeros_like(padded_img)
         
         # Horizontal filter pass
         for row_index in range(size, img_height+size):
-            # print("START OF ROW")
             for pixel_index in range(size, img_width+size):
+                # Find pixel window
                 window = padded_img[row_index, (pixel_index-size):(pixel_index+size+1)]
-                # print('Window', window)
+                # Find the mean of all pixels in window
                 total = np.sum(window)
                 new_pixel = total/window_area
                 intermediateArray[row_index, pixel_index] = new_pixel
             
+        # Create an empty array to store the final filtered image
         blurredImg = np.zeros_like(intermediateArray)
         
         # Vertical filter pass
         for row_index in range(size, img_height+size):
             for pixel_index in range(size, img_width+size):
+                # Find pixel window
                 window = intermediateArray[row_index-size:row_index+size+1, pixel_index]
+                # Find mean of all pixels in window
                 total = np.sum(window)
                 new_pixel = total/window_area
                 blurredImg[row_index, pixel_index] = new_pixel 
         
-        
+        # Remove padding 
         slicedArray = blurredImg[size:img_height+size, size:img_width+size]
         self.img_filtered = (slicedArray*255).astype(np.uint8)
         
+        # Show the filtered Image
         plt.figure()
-        plt.title("Separable Mean Filter")
+        plt.title(f"Separable Mean Filter {window_size}x{window_size}")
         plt.imshow(slicedArray, cmap="gray")  
 
     def GaussianFilter(self,  sd):
@@ -102,14 +120,18 @@ class DIPFilters:
         window_area = window_size*window_size
         
         gauss = lambda x : math.exp(-((x**2)/(2*sd**2)))
+        # Create horizontal window of gaussian filter
         h_window = np.array([gauss(x) for x in range(-size, size+1)])
+        # Create vertical window of gaussian filter
         v_window = np.transpose(h_window)
 
-        padded_img = np.pad(self.img, pad_width=size, mode='constant')
+        # Pad the edges
+        padded_img = np.pad(self.img, pad_width=size, mode='edge')
         
         img_height = self.img.shape[0]
         img_width = self.img.shape[1]
         
+        # Create empty array to hold image after horizontal filter pass
         intermediateArray = np.zeros_like(padded_img)
         
         # Horizontal filter pass
@@ -132,11 +154,13 @@ class DIPFilters:
                 blurredImg[row_index, pixel_index] = new_pixel 
         
         
+        # Remove padding 
         slicedArray = blurredImg[size:img_height+size, size:img_width+size]
         self.img_filtered = (slicedArray*255).astype(np.uint8)
         
+        # Show filtered image
         plt.figure()
-        plt.title("Gaussian Filter")
+        plt.title(f"Gaussian Filter, SD = {sd}")
         plt.imshow(slicedArray, cmap="gray")
 
     def MedianFilter(self, window_size):
@@ -155,31 +179,36 @@ class DIPFilters:
         
         size = int((window_size-1)/2)
         window_area = window_size*window_size
-        padded_img_disc = np.pad(img_disc, pad_width=size, mode='constant')
+        
+        # Pad edges of image
+        padded_img_disc = np.pad(img_disc, pad_width=size, mode='edge')
         
         img_height = self.img.shape[0]
         img_width = self.img.shape[1]
         
+        # Create empty array to hold filtered image
         blurredImg = np.zeros_like(padded_img_disc)
         
+        # Create empty histogram
         histogram = [0]*256
         median_idx = (window_area//2)+1
         
         # Main loop through image
         for row_index in range(size, img_height+size):
             
-            # Initialise histogram for row
+            # Empty histogram each row
             histogram = [0]*256
             pixel_index = size
+            # Loop through the window and update the histogram
             for hist_row_index in range(-size, size+1):
                 for hist_pixel_index in range(-size, size+1):
                     pixel_val = padded_img_disc[row_index + hist_row_index, pixel_index + hist_pixel_index]
                     histogram[int(pixel_val)] += 1
             
-            # Find the median value from hist just made
+            # Find the median value from histogram just made
             blurredImg[row_index, pixel_index] = findMedian(histogram, median_idx)
             
-            # Update histrogram for rest of pixels in row
+            # Update histogram for rest of pixels in row
             for pixel_index in range(size+1, img_width+size):
                 old_col = pixel_index - size - 1
                 new_col = pixel_index + size
@@ -194,15 +223,16 @@ class DIPFilters:
                     new_pixel_val = padded_img_disc[row_index + col_row_index, new_col]
                     histogram[int(new_pixel_val)] += 1
             
-                # Find median from updated hisogram
+                # Find median from updated histogram
                 blurredImg[row_index, pixel_index] = findMedian(histogram, median_idx)
         
         # Slice off padding        
         slicedArray = blurredImg[size:img_height+size, size:img_width+size]
         self.img_filtered = slicedArray.astype(np.uint8)
-            
+        
+        # Show the filtered image
         plt.figure()
-        plt.title("Median Filter")
+        plt.title(f"Median Filter {window_size}x{window_size}")
         plt.imshow(slicedArray, cmap="gray")          
  
     def TruncatedMedian(self, window_size):
@@ -217,6 +247,8 @@ class DIPFilters:
             return 0
         
         def findTruncMedian(current_pixels, hist, median_idx):
+            
+            # Function for finding the truncated median from a histogram 
             
             # Find the original median of pixel window
             orig_median = findMedian(hist, median_idx)
@@ -251,35 +283,40 @@ class DIPFilters:
         # Discretise image for histogram sort
         img_disc = np.round(self.img*255)
         
+        
         size = int((window_size-1)/2)
         window_area = window_size*window_size
+        
+        # Pad the image
         padded_img_disc = np.pad(img_disc, pad_width=size, mode='constant')
         
         img_height = self.img.shape[0]
         img_width = self.img.shape[1]
         
+        # Create empty array for holding the filtered image
         blurredImg = np.zeros_like(padded_img_disc)
         
+        # Create empty histogram
         histogram = [0]*256
         median_idx = (window_area//2)+1
         
         # Main loop through image
         for row_index in range(size, img_height+size):
             
-            # Initialise histogram for row
-        
+            # Clear histogram for eahc row
             histogram = [0]*256
             pixel_index = size
+            # Create an array of all the current pixels in the window
             current_pixels = padded_img_disc[row_index-size:row_index+size+1, pixel_index-size:pixel_index+size+1].flatten()
             
+            # Loop through window and Update histogram 
             for hist_row_index in range(-size, size+1):
                 for hist_pixel_index in range(-size, size+1):
                     pixel_val = padded_img_disc[row_index + hist_row_index, pixel_index + hist_pixel_index]
                     histogram[int(pixel_val)] += 1
             
-            # Find the median value from hist just made
+            # Find the truncated median value from hist just made
             blurredImg[row_index, pixel_index] = findTruncMedian(current_pixels, histogram, median_idx)
-            
             
             # Update histrogram for rest of pixels in row
             for pixel_index in range(size+1, img_width+size):
@@ -298,7 +335,7 @@ class DIPFilters:
                     new_pixel_val = padded_img_disc[row_index + col_row_index, new_col]
                     histogram[int(new_pixel_val)] += 1
             
-                # Find median from updated histogram
+                # Find truncated median from updated histogram
                 blurredImg[row_index, pixel_index] = findTruncMedian(current_pixels, histogram, median_idx)
                 
                 
@@ -306,17 +343,19 @@ class DIPFilters:
         slicedArray = blurredImg[size:img_height+size, size:img_width+size]
         self.img_filtered = slicedArray.astype(np.uint8)
             
+        # Show filtered image
         plt.figure()
-        plt.title("Truncated Median Filter")
+        plt.title(f"Truncated Median Filter {window_size}x{window_size}")
         plt.imshow(slicedArray, cmap="gray")
 
     def CentreWeightedMedian(self, window_size, centre_weight=1):
                 
         def findWeightedMedian(hist, median_idx, centre_val, centre_weight):
-            # Function for finding the median from a histogram
+            # Function for finding the weighted median from a histogram
             counter = 0 
             for pixel in range(256):
                 current_bar_size = hist[pixel]
+                # Add extra occurences for the central value
                 if pixel == centre_val:
                     current_bar_size += centre_weight
                 counter += current_bar_size
@@ -329,31 +368,37 @@ class DIPFilters:
         
         size = int((window_size-1)/2)
         window_area = window_size*window_size
+        
+        # Pad the image
         padded_img_disc = np.pad(img_disc, pad_width=size, mode='constant')
         
         img_height = self.img.shape[0]
         img_width = self.img.shape[1]
         
+        # Create empty array to hold filtered image
         blurredImg = np.zeros_like(padded_img_disc)
         
+        # Create empty histogram
         histogram = [0]*256
         median_idx = (window_area+centre_weight-1)/2
         
         # Main loop through image
         for row_index in range(size, img_height+size):
             
-            # Initialise histogram for row
+            # Clear histogram at start of each row 
             histogram = [0]*256
             pixel_index = size
             
+            # Find the central pixel value of the window
             centre_val = padded_img_disc[row_index, pixel_index]
             
+            # Update histogram
             for hist_row_index in range(-size, size+1):
                 for hist_pixel_index in range(-size, size+1):
                     pixel_val = padded_img_disc[row_index + hist_row_index, pixel_index + hist_pixel_index]
                     histogram[int(pixel_val)] += 1
             
-            # Find the median value from hist just made
+            # Find the weighted median value from hist just made
             blurredImg[row_index, pixel_index] = findWeightedMedian(histogram, median_idx, centre_val, centre_weight)
             
             # Update histrogram for rest of pixels in row
@@ -382,11 +427,57 @@ class DIPFilters:
         self.img_filtered = slicedArray.astype(np.uint8)
             
         plt.figure()
-        plt.title("Centre Weighted Median Filter")
+        plt.title(f"Centre Weighted Median Filter {window_size}x{window_size}")
         plt.imshow(slicedArray, cmap="gray")  
         pass
         
+    def OpenClose(self, window_size):
         
+        def erosion(img, window_size):
+            size = int((window_size-1)/2)
+            img_height = img.shape[0]
+            img_width = img.shape[1]
+            
+            padded_img = np.pad(img, pad_width=size, mode='edge')
+            
+            erodedImg = np.zeros_like(padded_img)  
+
+            for row_index in range(size, img_height+size):
+                for pixel_index in range(size, img_width+size):
+                    window = padded_img[row_index-size:row_index+size+1, pixel_index-size:pixel_index+size+1]
+                    erodedImg[row_index, pixel_index] = np.min(window)
+              
+            return erodedImg[size:img_height+size, size:img_width+size]
+        
+        def dilation(img, window_size):
+            size = int((window_size-1)/2)
+            img_height = img.shape[0] 
+            img_width = img.shape[1] 
+            
+            padded_img = np.pad(img, pad_width=size, mode='edge')
+        
+            dilatedImg = np.zeros_like(padded_img)
+
+            for row_index in range(size, img_height+size):
+                for pixel_index in range(size, img_width+size):
+                    window = padded_img[row_index-size:row_index+size+1, pixel_index-size:pixel_index+size+1]
+                    dilatedImg[row_index, pixel_index] = np.max(window)
+              
+            return dilatedImg[size:img_height+size, size:img_width+size]
+
+        # Opening
+        step1_eroded = erosion(self.img, window_size)
+        step2_opened = dilation(step1_eroded, window_size)
+        
+        # Closing
+        step3_dilated = dilation(step2_opened, window_size)
+        final_open_closed = erosion(step3_dilated, window_size)
+        
+        self.img_filtered = (final_open_closed*255).astype(np.uint8)
+            
+        plt.figure()
+        plt.title(f"Open-Close Filter {window_size}x{window_size}")
+        plt.imshow(final_open_closed, cmap="gray") 
                           
     def CannyEdgeDetect(self, lower, upper):
         # Uses OpenCV's Canny Edge detector
@@ -406,13 +497,14 @@ class DIPFilters:
 if __name__ == '__main__':
     NZfilter = DIPFilters('Images/NZjers1.png')
     NZfilter.display()
-    NZfilter.CannyEdgeDetect(150,300)
-    NZfilter.crudeMeanFilter(7)
+    # NZfilter.CannyEdgeDetect(150,300)
+    # NZfilter.crudeMeanFilter(7)
     NZfilter.SeparableMeanFilter(5)
     NZfilter.GaussianFilter(4)
     NZfilter.MedianFilter(5)
     NZfilter.TruncatedMedian(5)
     NZfilter.CentreWeightedMedian(7,7)
+    NZfilter.OpenClose(3)
 
 
     # CarWindow = DIPFilters('Images/carwindow.jpg')
