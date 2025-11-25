@@ -309,9 +309,85 @@ class DIPFilters:
         plt.figure()
         plt.title("Truncated Median Filter")
         plt.imshow(slicedArray, cmap="gray")
-        
-        
+
+    def CentreWeightedMedian(self, window_size, centre_weight=1):
                 
+        def findWeightedMedian(hist, median_idx, centre_val, centre_weight):
+            # Function for finding the median from a histogram
+            counter = 0 
+            for pixel in range(256):
+                current_bar_size = hist[pixel]
+                if pixel == centre_val:
+                    current_bar_size += centre_weight
+                counter += current_bar_size
+                if counter >= median_idx:
+                    return pixel
+            return 0
+        
+        # Discretise image for histogram sort
+        img_disc = np.round(self.img*255)
+        
+        size = int((window_size-1)/2)
+        window_area = window_size*window_size
+        padded_img_disc = np.pad(img_disc, pad_width=size, mode='constant')
+        
+        img_height = self.img.shape[0]
+        img_width = self.img.shape[1]
+        
+        blurredImg = np.zeros_like(padded_img_disc)
+        
+        histogram = [0]*256
+        median_idx = (window_area+centre_weight-1)/2
+        
+        # Main loop through image
+        for row_index in range(size, img_height+size):
+            
+            # Initialise histogram for row
+            histogram = [0]*256
+            pixel_index = size
+            
+            centre_val = padded_img_disc[row_index, pixel_index]
+            
+            for hist_row_index in range(-size, size+1):
+                for hist_pixel_index in range(-size, size+1):
+                    pixel_val = padded_img_disc[row_index + hist_row_index, pixel_index + hist_pixel_index]
+                    histogram[int(pixel_val)] += 1
+            
+            # Find the median value from hist just made
+            blurredImg[row_index, pixel_index] = findWeightedMedian(histogram, median_idx, centre_val, centre_weight)
+            
+            # Update histrogram for rest of pixels in row
+            for pixel_index in range(size+1, img_width+size):
+                
+                old_col = pixel_index - size - 1
+                new_col = pixel_index + size
+                
+                centre_val = padded_img_disc[row_index, pixel_index]
+                
+                for col_row_index in range(-size, size+1):
+                    
+                    # Remove pixel values from hist from column that just left
+                    old_pixel_val = padded_img_disc[row_index + col_row_index, old_col]
+                    histogram[int(old_pixel_val)] -= 1
+                    
+                    # Add pixel values to hist from column that just joined
+                    new_pixel_val = padded_img_disc[row_index + col_row_index, new_col]
+                    histogram[int(new_pixel_val)] += 1
+            
+                # Find median from updated hisogram
+                blurredImg[row_index, pixel_index] = findWeightedMedian(histogram, median_idx, centre_val, centre_weight)
+        
+        # Slice off padding        
+        slicedArray = blurredImg[size:img_height+size, size:img_width+size]
+        self.img_filtered = slicedArray.astype(np.uint8)
+            
+        plt.figure()
+        plt.title("Centre Weighted Median Filter")
+        plt.imshow(slicedArray, cmap="gray")  
+        pass
+        
+        
+                          
     def CannyEdgeDetect(self, lower, upper):
         # Uses OpenCV's Canny Edge detector
         # To verify the performance of the filtered images
@@ -325,24 +401,18 @@ class DIPFilters:
             
            
         
-        
-        
-        
-
-
-        
 
 #%%
 if __name__ == '__main__':
     NZfilter = DIPFilters('Images/NZjers1.png')
     NZfilter.display()
     NZfilter.CannyEdgeDetect(150,300)
-    # NZfilter.crudeMeanFilter(7)
+    NZfilter.crudeMeanFilter(7)
     NZfilter.SeparableMeanFilter(5)
     NZfilter.GaussianFilter(4)
-    NZfilter.MedianFilter(3)
+    NZfilter.MedianFilter(5)
     NZfilter.TruncatedMedian(5)
-    NZfilter.CannyEdgeDetect(150,300)
+    NZfilter.CentreWeightedMedian(7,7)
 
 
     # CarWindow = DIPFilters('Images/carwindow.jpg')
