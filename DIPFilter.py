@@ -60,7 +60,7 @@ class DIPFilters:
         slicedArray = emptyArray[size:img_height-size, size:img_width-size]
         plt.imshow(slicedArray, cmap="gray")
         
-    def SeparableMeanFilter(self, window_size):
+    def SeparableMeanFilter(self, window_size, save=False):
         
         #TODO: deal width the averaging of 0s in the edge
         
@@ -110,8 +110,11 @@ class DIPFilters:
         plt.figure()
         plt.title(f"Separable Mean Filter {window_size}x{window_size}")
         plt.imshow(slicedArray, cmap="gray")  
+        plt.axis('off')
+        if save:
+            plt.savefig(f"Filtered_Images/foetus/SeparableMean{window_size}x{window_size}", bbox_inches='tight', pad_inches=0)
 
-    def GaussianFilter(self,  sd):
+    def GaussianFilter(self,  sd, save=False):
         # Window size calculated from standard deviation
         # = 2 * ceil(3*sd) + 1
         
@@ -160,10 +163,13 @@ class DIPFilters:
         
         # Show filtered image
         plt.figure()
-        plt.title(f"Gaussian Filter, SD = {sd}")
+        plt.title(f"Gaussian Filter {window_size}x{window_size}, SD = {sd:.2f}")
         plt.imshow(slicedArray, cmap="gray")
+        plt.axis("off")
+        if save:
+            plt.savefig(f'Filtered_Images/foetus/GaussianSD{sd}.png', bbox_inches='tight', pad_inches=0)
 
-    def MedianFilter(self, window_size):
+    def MedianFilter(self, window_size, save=False):
         
         def findMedian(hist, median_idx):
             # Function for finding the median from a histogram
@@ -233,9 +239,12 @@ class DIPFilters:
         # Show the filtered image
         plt.figure()
         plt.title(f"Median Filter {window_size}x{window_size}")
-        plt.imshow(slicedArray, cmap="gray")          
- 
-    def TruncatedMedian(self, window_size):
+        plt.imshow(slicedArray, cmap="gray") 
+        plt.axis("off")
+        if save:   
+            plt.savefig(f'Filtered_Images/foetus/MedianFilter{window_size}x{window_size}', bbox_inches='tight', pad_inches=0)     
+        
+    def TruncatedMedian(self, window_size, save=False):
         
         def findMedian(hist, median_idx):
             # Function for finding the median from a histogram
@@ -347,8 +356,11 @@ class DIPFilters:
         plt.figure()
         plt.title(f"Truncated Median Filter {window_size}x{window_size}")
         plt.imshow(slicedArray, cmap="gray")
-
-    def CentreWeightedMedian(self, window_size, centre_weight=1):
+        plt.axis("off")
+        if save:
+            plt.savefig(f'Filtered_Images/foetus/TruncatedMedian{window_size}x{window_size}', bbox_inches='tight', pad_inches=0)
+        
+    def CentreWeightedMedian(self, window_size, centre_weight=1, save=False):
                 
         def findWeightedMedian(hist, median_idx, centre_val, centre_weight):
             # Function for finding the weighted median from a histogram
@@ -427,11 +439,13 @@ class DIPFilters:
         self.img_filtered = slicedArray.astype(np.uint8)
             
         plt.figure()
-        plt.title(f"Centre Weighted Median Filter {window_size}x{window_size}")
-        plt.imshow(slicedArray, cmap="gray")  
-        pass
+        plt.title(f"Centre Weighted Median Filter {window_size}x{window_size}, w={centre_weight}") 
+        plt.imshow(slicedArray, cmap="gray") 
+        plt.axis("off")
+        if save:
+            plt.savefig(f'Filtered_Images/foetus/CWMFilter{window_size}x{window_size}', bbox_inches='tight', pad_inches=0)
         
-    def OpenClose(self, window_size):
+    def OpenClose(self, window_size, save=False):
         
         def erosion(img, window_size):
             size = int((window_size-1)/2)
@@ -477,17 +491,22 @@ class DIPFilters:
             
         plt.figure()
         plt.title(f"Open-Close Filter {window_size}x{window_size}")
-        plt.imshow(final_open_closed, cmap="gray") 
+        plt.imshow(final_open_closed, cmap="gray")
+        plt.axis("off")
+        if save:
+            plt.savefig(f'Filtered_Images/foetus/OpenCloseFilter{window_size}x{window_size}', bbox_inches='tight', pad_inches=0)
                           
-    def CannyEdgeDetect(self, lower, upper):
+    def CannyEdgeDetect(self, lower=100, upper=200, filter_name='', window_size_name=''):
         # Uses OpenCV's Canny Edge detector
         # To verify the performance of the filtered images
         
         edges = cv2.Canny(self.img_filtered, lower, upper)
         
         plt.figure()
-        plt.title("Canny Edge Detection")
+        plt.title(f"Canny Edge Detection, {filter_name} {window_size_name}x{window_size_name} ")
         plt.imshow(edges, cmap="gray")
+        plt.axis("off")
+        plt.savefig(f'Filtered_Images/CannyEdge{filter_name}{window_size_name}x{window_size_name}', bbox_inches='tight', pad_inches=0)
 
             
            
@@ -496,15 +515,51 @@ class DIPFilters:
 #%%
 if __name__ == '__main__':
     NZfilter = DIPFilters('Images/NZjers1.png')
+    FoetusFilter = DIPFilters('Images/foetus.png')
     NZfilter.display()
-    # NZfilter.CannyEdgeDetect(150,300)
-    # NZfilter.crudeMeanFilter(7)
-    NZfilter.SeparableMeanFilter(5)
-    NZfilter.GaussianFilter(4)
-    NZfilter.MedianFilter(5)
-    NZfilter.TruncatedMedian(5)
-    NZfilter.CentreWeightedMedian(7,7)
-    NZfilter.OpenClose(3)
+    NZfilter.CannyEdgeDetect(150,300)
+    # # NZfilter.crudeMeanFilter(7)
+    # NZfilter.SeparableMeanFilter(5)
+    # NZfilter.GaussianFilter(4)
+    # NZfilter.MedianFilter(9)
+    # NZfilter.TruncatedMedian(5)
+    # NZfilter.CentreWeightedMedian(3,7)
+    # NZfilter.OpenClose(3)
+    
+    NZfilter.display()
+    NZfilter.CannyEdgeDetect(150,300)
+    
+    # window_sizes = [3,5,7,9]
+    # sigmas = [1,2,3,4]
+    # for window_size, sigma in zip(window_sizes, sigmas):
+    #     NZfilter.SeparableMeanFilter(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Mean Filter", str(window_size))
+    #     NZfilter.GaussianFilter(sigma)
+    #     NZfilter.CannyEdgeDetect(150,300, "Gaussian Filter", str(window_size))
+    #     NZfilter.MedianFilter(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Median Filter", str(window_size))
+    #     NZfilter.TruncatedMedian(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Truncated Median", str(window_size))
+    #     NZfilter.CentreWeightedMedian(window_size,7)
+    #     NZfilter.CannyEdgeDetect(150,300, "CWM", str(window_size))
+    #     NZfilter.OpenClose(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Open-Close", str(window_size))
+        
+    # window_sizes = [3,5,7,9]
+    # sigmas = [1,2,3,4]
+    # for window_size, sigma in zip(window_sizes, sigmas):
+    #     NZfilter.SeparableMeanFilter(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Mean", str(window_size))
+    #     NZfilter.GaussianFilter(sigma)
+    #     NZfilter.CannyEdgeDetect(150,300, "Gaussian", str(window_size))
+    #     NZfilter.MedianFilter(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Median", str(window_size))
+    #     NZfilter.TruncatedMedian(window_size)
+    #     NZfilter.CannyEdgeDetect(150,300, "Truncated Median", str(window_size))
+    #     NZfilter.CentreWeightedMedian(window_size,7)
+    #     NZfilter.CannyEdgeDetect(150,300, "CWM", str(window_size))
+    #     NZfilter.OpenClose(window_size) 
+    #     NZfilter.CannyEdgeDetect(150,300, "Open-Close", str(window_size))
 
 
     # CarWindow = DIPFilters('Images/carwindow.jpg')
